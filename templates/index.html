@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor Bancario Local</title>
+    <!-- Chart.js para gráficos financieros -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #0F172A;
+            --surface: #1E293B;
+            --surface-hover: #334155;
+            --border: #334155;
+            --text-main: #F8FAFC;
+            --text-muted: #94A3B8;
+            --primary: #3B82F6;
+            --primary-hover: #2563EB;
+            --success: #10B981;
+            --danger: #EF4444;
+            --warning: #F59E0B;
+            --card-radius: 14px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* Barra Superior */
+        header {
+            background-color: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-icon {
+            background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .brand h1 {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 18px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        .btn-primary:hover { background-color: var(--primary-hover); transform: translateY(-1px); }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--border);
+        }
+        .btn-outline:hover { background: var(--surface-hover); }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        .btn-danger:hover { background: var(--danger); color: white; }
+
+        /* Contenedor Principal */
+        .container {
+            max-width: 1280px;
+            margin: 24px auto 0;
+            padding: 0 24px;
+        }
+
+        /* Tarjetas de Resumen KPI */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+
+        .kpi-card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--card-radius);
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+        }
+
+        .kpi-card.net-worth::before { background-color: var(--primary); }
+        .kpi-card.income::before { background-color: var(--success); }
+        .kpi-card.expense::before { background-color: var(--danger); }
+        .kpi-card.savings::before { background-color: var(--warning); }
+
+        .kpi-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .kpi-value {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .kpi-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        /* Sección de Cuentas */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .accounts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .account-card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--card-radius);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .account-card:hover {
+            transform: translateY(-2px);
+            border-color: #475569;
+        }
+
+        .account-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .account-name {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .account-bank {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .account-badge {
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+        }
+
+        .account-balance {
+            font-size: 22px;
+            font-weight: 800;
+            margin-top: 20px;
+        }
+
+        /* Gráficos */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.6fr;
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 900px) {
+            .charts-grid { grid-template-columns: 1fr; }
+        }
+
+        .chart-card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--card-radius);
+            padding: 24px;
+            min-height: 340px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-container {
+            flex: 1;
+            position: relative;
+            min-height: 250px;
+        }
+
+        /* Tabla de Movimientos */
+        .card-table {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--card-radius);
+            padding: 24px;
+        }
+
+        .filters-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .search-input, .select-filter {
+            background-color: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .search-input:focus, .select-filter:focus {
+            border-color: var(--primary);
+        }
+
+        .search-input { flex: 1; min-width: 220px; }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            color: var(--text-muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            font-weight: 600;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+            vertical-align: middle;
+        }
+
+        tr:hover td {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .badge-type {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-gasto { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+        .badge-ingreso { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+        .badge-transferencia { background: rgba(59, 130, 246, 0.15); color: var(--primary); }
+
+        .amount-gasto { color: var(--danger); font-weight: 700; }
+        .amount-ingreso { color: var(--success); font-weight: 700; }
+        .amount-transferencia { color: var(--primary); font-weight: 700; }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--card-radius);
+            width: 100%;
+            max-width: 480px;
+            padding: 24px;
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            background-color: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+        }
+
+        .type-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .type-btn {
+            background-color: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .type-btn.active.gasto { background: rgba(239, 68, 68, 0.2); border-color: var(--danger); color: var(--danger); }
+        .type-btn.active.ingreso { background: rgba(16, 185, 129, 0.2); border-color: var(--success); color: var(--success); }
+        .type-btn.active.transferencia { background: rgba(59, 130, 246, 0.2); border-color: var(--primary); color: var(--primary); }
+
+        /* Notificación Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #1E293B;
+            border: 1px solid var(--primary);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            display: none;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            z-index: 200;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Encabezado Superior -->
+    <header>
+        <div class="brand">
+            <div class="brand-icon">💳</div>
+            <div>
+                <h1>Gestor Bancario Local</h1>
+                <small style="color: var(--text-muted); font-size: 12px;">Base de datos SQLite local en tu PC</small>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="/export-csv" class="btn btn-outline" title="Exportar extracto a archivo CSV">📥 Exportar CSV</a>
+            <button class="btn btn-outline" onclick="openAccountModal()">➕ Nueva Cuenta</button>
+            <button class="btn btn-primary" onclick="openTxModal()">✍️ Registrar Movimiento</button>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <!-- Tarjetas de Resumen KPI -->
+        <div class="kpi-grid">
+            <div class="kpi-card net-worth">
+                <div class="kpi-label">Patrimonio Neto Total</div>
+                <div class="kpi-value" id="kpiNetWorth">0,00 €</div>
+                <div class="kpi-sub">Suma de saldos de todas las cuentas</div>
+            </div>
+            <div class="kpi-card income">
+                <div class="kpi-label">Ingresos de este Mes</div>
+                <div class="kpi-value" id="kpiIncome" style="color: var(--success);">+0,00 €</div>
+                <div class="kpi-sub" id="kpiMonthLabel">Mes actual</div>
+            </div>
+            <div class="kpi-card expense">
+                <div class="kpi-label">Gastos de este Mes</div>
+                <div class="kpi-value" id="kpiExpense" style="color: var(--danger);">-0,00 €</div>
+                <div class="kpi-sub">Total salidas de dinero</div>
+            </div>
+            <div class="kpi-card savings">
+                <div class="kpi-label">Ahorro Neto y Tasa</div>
+                <div class="kpi-value" id="kpiSavings">0,00 €</div>
+                <div class="kpi-sub" id="kpiRate">Tasa de ahorro: 0%</div>
+            </div>
+        </div>
+
+        <!-- Cuentas Bancarias -->
+        <div class="section-header">
+            <h2 class="section-title">Mis Cuentas Bancarias</h2>
+        </div>
+        <div class="accounts-grid" id="accountsContainer">
+            <!-- Cargado dinámicamente -->
+        </div>
+
+        <!-- Gráficos Financieros -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h2 class="section-title" style="margin-bottom: 16px;">Gastos por Categoría (Mes Actual)</h2>
+                <div class="chart-container">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h2 class="section-title" style="margin-bottom: 16px;">Evolución Ingresos vs Gastos</h2>
+                <div class="chart-container">
+                    <canvas id="historyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de Movimientos Recientes -->
+        <div class="card-table">
+            <div class="section-header">
+                <h2 class="section-title">Últimos Movimientos</h2>
+            </div>
+            <div class="filters-bar">
+                <input type="text" id="searchInput" class="search-input" placeholder="Buscar por concepto o destinatario..." oninput="loadTransactions()">
+                <select id="accountFilter" class="select-filter" onchange="loadTransactions()">
+                    <option value="">Todas las cuentas</option>
+                </select>
+                <select id="typeFilter" class="select-filter" onchange="loadTransactions()">
+                    <option value="">Todos los tipos</option>
+                    <option value="gasto">Gastos</option>
+                    <option value="ingreso">Ingresos</option>
+                    <option value="transferencia">Transferencias</option>
+                </select>
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>Cuenta</th>
+                            <th>Categoría</th>
+                            <th>Concepto / Pagador</th>
+                            <th style="text-align: right;">Importe</th>
+                            <th style="text-align: center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionsBody">
+                        <!-- Cargado dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modal Registrar Movimiento -->
+    <div class="modal-overlay" id="txModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Nuevo Movimiento</h3>
+                <button class="modal-close" onclick="closeTxModal()">&times;</button>
+            </div>
+            <div class="type-selector">
+                <div class="type-btn active gasto" onclick="setTxType('gasto')">Gasto</div>
+                <div class="type-btn ingreso" onclick="setTxType('ingreso')">Ingreso</div>
+                <div class="type-btn transferencia" onclick="setTxType('transferencia')">Transferencia</div>
+            </div>
+            <form id="txForm" onsubmit="submitTransaction(event)">
+                <input type="hidden" id="txType" value="gasto">
+
+                <div class="form-group">
+                    <label class="form-label" id="accountLabel">Cuenta</label>
+                    <select id="txAccount" class="form-control" required></select>
+                </div>
+
+                <div class="form-group" id="toAccountGroup" style="display: none;">
+                    <label class="form-label">Cuenta Destino</label>
+                    <select id="txToAccount" class="form-control"></select>
+                </div>
+
+                <div class="form-group" id="categoryGroup">
+                    <label class="form-label">Categoría</label>
+                    <select id="txCategory" class="form-control"></select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Importe (€)</label>
+                    <input type="number" step="0.01" min="0.01" id="txAmount" class="form-control" placeholder="0.00" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Fecha</label>
+                    <input type="date" id="txDate" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Concepto / Descripción</label>
+                    <input type="text" id="txDesc" class="form-control" placeholder="Ej: Compra Mercadona, Alquiler, etc.">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Destinatario / Pagador</label>
+                    <input type="text" id="txPayee" class="form-control" placeholder="Ej: Mercadona, Empresa SL, etc.">
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+                    <button type="button" class="btn btn-outline" onclick="closeTxModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Movimiento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Nueva Cuenta -->
+    <div class="modal-overlay" id="accountModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Nueva Cuenta Bancaria</h3>
+                <button class="modal-close" onclick="closeAccountModal()">&times;</button>
+            </div>
+            <form id="accountForm" onsubmit="submitAccount(event)">
+                <div class="form-group">
+                    <label class="form-label">Nombre de la Cuenta</label>
+                    <input type="text" id="accName" class="form-control" placeholder="Ej: Cuenta Nómina, Ahorro Viaje" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Entidad Bancaria</label>
+                    <input type="text" id="accBank" class="form-control" placeholder="Ej: Santander, BBVA, Revolut, ING" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tipo de Cuenta</label>
+                    <select id="accType" class="form-control">
+                        <option value="Corriente">Cuenta Corriente</option>
+                        <option value="Ahorro">Cuenta de Ahorro</option>
+                        <option value="Tarjeta">Tarjeta de Crédito</option>
+                        <option value="Efectivo">Efectivo / Cartera</option>
+                        <option value="Inversión">Inversión / Cartera</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Saldo Inicial (€)</label>
+                    <input type="number" step="0.01" id="accInitial" class="form-control" value="0.00" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Color Distintivo</label>
+                    <input type="color" id="accColor" class="form-control" value="#2563EB" style="height: 42px; cursor: pointer;">
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+                    <button type="button" class="btn btn-outline" onclick="closeAccountModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear Cuenta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast de Notificaciones -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let accountsCache = [];
+        let categoriesCache = [];
+        let categoryChartInstance = null;
+        let historyChartInstance = null;
+
+        // Inicialización
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
+            loadAll();
+        });
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 3000);
+        }
+
+        async function loadAll() {
+            await Promise.all([loadAccounts(), loadCategories()]);
+            await Promise.all([loadSummary(), loadTransactions(), renderCharts()]);
+        }
+
+        // Cargar Cuentas
+        async function loadAccounts() {
+            const res = await fetch('/api/accounts');
+            accountsCache = await res.json();
+
+            const container = document.getElementById('accountsContainer');
+            const selectTx = document.getElementById('txAccount');
+            const selectTo = document.getElementById('txToAccount');
+            const selectFilter = document.getElementById('accountFilter');
+
+            container.innerHTML = '';
+            selectTx.innerHTML = '';
+            selectTo.innerHTML = '';
+            selectFilter.innerHTML = '<option value="">Todas las cuentas</option>';
+
+            accountsCache.forEach(acc => {
+                // Card en vista
+                const card = document.createElement('div');
+                card.className = 'account-card';
+                card.style.borderTop = `4px solid ${acc.color || '#2563EB'}`;
+                card.innerHTML = `
+                    <div class="account-header">
+                        <div>
+                            <div class="account-name">${acc.name}</div>
+                            <div class="account-bank">${acc.bank_name}</div>
+                        </div>
+                        <span class="account-badge">${acc.account_type}</span>
+                    </div>
+                    <div class="account-balance" style="color: ${acc.current_balance >= 0 ? '#F8FAFC' : '#EF4444'}">
+                        ${acc.current_balance.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
+                    </div>
+                `;
+                container.appendChild(card);
+
+                // Opciones en selectores
+                const opt1 = new Option(`${acc.name} (${acc.bank_name})`, acc.id);
+                const opt2 = new Option(`${acc.name} (${acc.bank_name})`, acc.id);
+                const optFilter = new Option(`${acc.name}`, acc.id);
+
+                selectTx.add(opt1);
+                selectTo.add(opt2);
+                selectFilter.add(optFilter);
+            });
+        }
+
+        // Cargar Categorías
+        async function loadCategories() {
+            const res = await fetch('/api/categories');
+            categoriesCache = await res.json();
+            updateCategoryOptions('gasto');
+        }
+
+        function updateCategoryOptions(type) {
+            const select = document.getElementById('txCategory');
+            select.innerHTML = '<option value="">Sin categoría</option>';
+            categoriesCache
+                .filter(c => c.type === type)
+                .forEach(c => {
+                    select.add(new Option(c.name, c.id));
+                });
+        }
+
+        // Resumen KPI
+        async function loadSummary() {
+            const res = await fetch('/api/stats/summary');
+            const data = await res.json();
+
+            document.getElementById('kpiNetWorth').textContent = `${data.total_net_worth.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €`;
+            document.getElementById('kpiIncome').textContent = `+${data.monthly_income.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €`;
+            document.getElementById('kpiExpense').textContent = `-${data.monthly_expense.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €`;
+            document.getElementById('kpiSavings').textContent = `${data.monthly_savings.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €`;
+            document.getElementById('kpiRate').textContent = `Tasa de ahorro: ${data.savings_rate}%`;
+        }
+
+        // Movimientos
+        async function loadTransactions() {
+            const search = document.getElementById('searchInput').value;
+            const accountId = document.getElementById('accountFilter').value;
+            const type = document.getElementById('typeFilter').value;
+
+            const params = new URLSearchParams();
+            if (search) params.append('search', search);
+            if (accountId) params.append('account_id', accountId);
+            if (type) params.append('type', type);
+
+            const res = await fetch(`/api/transactions?${params.toString()}`);
+            const txs = await res.json();
+
+            const tbody = document.getElementById('transactionsBody');
+            tbody.innerHTML = '';
+
+            if (txs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 28px; color: var(--text-muted);">No hay movimientos registrados.</td></tr>';
+                return;
+            }
+
+            txs.forEach(t => {
+                const tr = document.createElement('tr');
+                const sign = t.type === 'gasto' ? '-' : (t.type === 'ingreso' ? '+' : '⇄');
+                const accountDisplay = t.type === 'transferencia' 
+                    ? `${t.account_name} ➔ ${t.to_account_name || 'Desconocida'}`
+                    : t.account_name;
+
+                tr.innerHTML = `
+                    <td style="color: var(--text-muted);">${t.date}</td>
+                    <td><span class="badge-type badge-${t.type}">${t.type}</span></td>
+                    <td style="font-weight: 500;">${accountDisplay}</td>
+                    <td><span style="color: ${t.category_color || 'var(--text-muted)'};">${t.category_name || '—'}</span></td>
+                    <td>
+                        <div style="font-weight: 600;">${t.description || 'Sin concepto'}</div>
+                        ${t.payee ? `<div style="font-size: 12px; color: var(--text-muted);">${t.payee}</div>` : ''}
+                    </td>
+                    <td style="text-align: right;" class="amount-${t.type}">
+                        ${sign} ${t.amount.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
+                    </td>
+                    <td style="text-align: center;">
+                        <button class="btn btn-danger" onclick="deleteTransaction(${t.id})" title="Eliminar movimiento">🗑️</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Gráficos
+        async function renderCharts() {
+            // 1. Gráfico Donut de Categorías
+            const resCat = await fetch('/api/stats/category-breakdown');
+            const catData = await resCat.json();
+
+            const catCtx = document.getElementById('categoryChart').getContext('2d');
+            if (categoryChartInstance) categoryChartInstance.destroy();
+
+            if (catData.length === 0) {
+                categoryChartInstance = new Chart(catCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Sin gastos este mes'],
+                        datasets: [{ data: [1], backgroundColor: ['#334155'] }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            } else {
+                categoryChartInstance = new Chart(catCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: catData.map(c => c.category),
+                        datasets: [{
+                            data: catData.map(c => c.total),
+                            backgroundColor: catData.map(c => c.color || '#3B82F6'),
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { color: '#94A3B8', boxWidth: 12 } }
+                        }
+                    }
+                });
+            }
+
+            // 2. Gráfico de Historial Mensual
+            const resHist = await fetch('/api/stats/monthly-history');
+            const histData = await resHist.json();
+
+            const histCtx = document.getElementById('historyChart').getContext('2d');
+            if (historyChartInstance) historyChartInstance.destroy();
+
+            historyChartInstance = new Chart(histCtx, {
+                type: 'bar',
+                data: {
+                    labels: histData.map(h => h.month),
+                    datasets: [
+                        {
+                            label: 'Ingresos',
+                            data: histData.map(h => h.income),
+                            backgroundColor: '#10B981',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Gastos',
+                            data: histData.map(h => h.expense),
+                            backgroundColor: '#EF4444',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: '#94A3B8' }, grid: { display: false } },
+                        y: { ticks: { color: '#94A3B8' }, grid: { color: 'rgba(51, 65, 85, 0.5)' } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#94A3B8' } }
+                    }
+                }
+            });
+        }
+
+        // Manejo de Modales
+        function openTxModal() {
+            document.getElementById('txModal').style.display = 'flex';
+        }
+        function closeTxModal() {
+            document.getElementById('txModal').style.display = 'none';
+        }
+
+        function openAccountModal() {
+            document.getElementById('accountModal').style.display = 'flex';
+        }
+        function closeAccountModal() {
+            document.getElementById('accountModal').style.display = 'none';
+        }
+
+        function setTxType(type) {
+            document.querySelectorAll('.type-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.type-btn.${type}`).classList.add('active');
+            document.getElementById('txType').value = type;
+
+            const toGroup = document.getElementById('toAccountGroup');
+            const catGroup = document.getElementById('categoryGroup');
+            const accLabel = document.getElementById('accountLabel');
+
+            if (type === 'transferencia') {
+                toGroup.style.display = 'block';
+                catGroup.style.display = 'none';
+                accLabel.textContent = 'Cuenta Origen';
+            } else {
+                toGroup.style.display = 'none';
+                catGroup.style.display = 'block';
+                accLabel.textContent = 'Cuenta';
+                updateCategoryOptions(type);
+            }
+        }
+
+        // Envío de Formulario: Movimiento
+        async function submitTransaction(e) {
+            e.preventDefault();
+            const txType = document.getElementById('txType').value;
+            const payload = {
+                type: txType,
+                account_id: document.getElementById('txAccount').value,
+                to_account_id: txType === 'transferencia' ? document.getElementById('txToAccount').value : null,
+                category_id: txType !== 'transferencia' ? document.getElementById('txCategory').value || null : null,
+                amount: parseFloat(document.getElementById('txAmount').value),
+                date: document.getElementById('txDate').value,
+                description: document.getElementById('txDesc').value,
+                payee: document.getElementById('txPayee').value
+            };
+
+            const res = await fetch('/api/transactions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                closeTxModal();
+                document.getElementById('txForm').reset();
+                document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
+                showToast("✅ Movimiento guardado correctamente");
+                loadAll();
+            } else {
+                const err = await res.json();
+                alert(err.error || 'Error al guardar');
+            }
+        }
+
+        // Envío de Formulario: Cuenta
+        async function submitAccount(e) {
+            e.preventDefault();
+            const payload = {
+                name: document.getElementById('accName').value,
+                bank_name: document.getElementById('accBank').value,
+                account_type: document.getElementById('accType').value,
+                initial_balance: parseFloat(document.getElementById('accInitial').value),
+                color: document.getElementById('accColor').value
+            };
+
+            const res = await fetch('/api/accounts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                closeAccountModal();
+                document.getElementById('accountForm').reset();
+                showToast("✅ Nueva cuenta bancaria creada");
+                loadAll();
+            } else {
+                const err = await res.json();
+                alert(err.error || 'Error al crear la cuenta');
+            }
+        }
+
+        // Eliminar Movimiento
+        async function deleteTransaction(id) {
+            if (!confirm('¿Estás seguro de que deseas eliminar este movimiento?')) return;
+
+            const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                showToast("🗑️ Movimiento eliminado");
+                loadAll();
+            }
+        }
+    </script>
+</body>
+</html>
